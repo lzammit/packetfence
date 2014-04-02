@@ -21,9 +21,12 @@ use Data::Dumper;
 
 use pf::config;
 use pf::SwitchFactory;
+use pf::inline::custom;
 
 Log::Log4perl->init_and_watch("$conf_dir/log.conf", $LOG4PERL_RELOAD_TIMER);
 Log::Log4perl::MDC->put('proc', 'pf::jsonAPI');
+
+
 
 sub handler {
     my ($r) = @_;
@@ -63,6 +66,7 @@ sub dispatch_request {
         desAssociate => \&desAssociate,
         firewall     => \&firewall,
         snmptrap     => \&snmptrap,
+        firewallsso => \&firewallsso,
     };
     return $key->{$request};
 }
@@ -115,6 +119,24 @@ sub snmptrap {
 
 }
 
+sub firewallsso {
+    my $r = (shift);
+    my $logger = Log::Log4perl->get_logger('pf::jsonAPI');
+
+    my $info = $r->pnotes->{info};
+    foreach my $firewall_conf ( sort keys %ConfigFirewallSSO ) {
+        $logger->warn($ConfigFirewallSSO{$firewall_conf}->{'type'});
+        my $module_name = 'pf::firewallsso::'.$ConfigFirewallSSO{$firewall_conf}->{'type'};
+        $module_name = untaint_chain($module_name);
+        # load the module to instantiate
+        if ( !(eval "$module_name->require()" ) ) {
+            $logger->error("Can not load perl module: $@");
+            return 0;
+        }
+        my $firewall = $module_name->new();
+        my $return = $firewall->action($firewall_conf,$info->{'method'},$info->{'mac'},$info->{'ip'});
+    }
+}
 
 =head1 AUTHOR
 

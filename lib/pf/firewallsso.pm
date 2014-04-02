@@ -18,6 +18,7 @@ use warnings;
 use Log::Log4perl;
 use pf::config;
 use pf::util;
+use pf::jsonAPI;
 
 =head1 SUBROUTINES
 
@@ -45,18 +46,15 @@ sub do_sso {
     my ($self, $method, $mac, $ip) = @_;
     my $logger = Log::Log4perl::get_logger( ref($self) );
 
-    foreach my $firewall_conf ( sort keys %ConfigFirewallSSO ) {
-        $logger->warn($ConfigFirewallSSO{$firewall_conf}->{'type'});
-        my $module_name = 'pf::firewallsso::'.$ConfigFirewallSSO{$firewall_conf}->{'type'};
-        $module_name = untaint_chain($module_name);
-        # load the module to instantiate
-        if ( !(eval "$module_name->require()" ) ) {
-            $logger->error("Can not load perl module: $@");
-            return 0;
-        }
-        my $firewall = $module_name->new();
-        my $return = $firewall->action($firewall_conf,$method,$mac,$ip);
-    }
+    my %data = (
+       'method'           => $method,
+       'mac'              => $mac,
+       'ip'               => $ip
+    );
+
+    my $json_client = pf::jsonAPI::jsonclient->new();
+    $json_client->call_WebAPI( 'firewallsso', %data );
+
 }
 
 
