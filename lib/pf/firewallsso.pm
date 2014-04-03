@@ -18,7 +18,7 @@ use warnings;
 use Log::Log4perl;
 use pf::config;
 use pf::util;
-use pf::jsonAPI;
+use pf::jsonAPI::jsonclient;
 
 =head1 SUBROUTINES
 
