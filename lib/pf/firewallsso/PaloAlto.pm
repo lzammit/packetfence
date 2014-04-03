@@ -24,7 +24,7 @@ use pf::config;
 sub description { 'PaloAlto Firewall' }
 use pf::node qw(node_view);
 use LWP::UserAgent;
-use HTTP:Request::Common;
+use HTTP::Request::Common;
 
 #Export environement variables for LWP
 $ENV{'PERL_LWP_SSL_VERIFY_HOSTNAME'} = 0;
@@ -33,7 +33,7 @@ sub action {
     my ($self,$firewall_conf,$method,$mac,$ip) = @_;
     my $logger = Log::Log4perl::get_logger(ref($self));
 
-    if ($method eq 'start') {
+    if ($method eq 'Start') {
         my $node_info = node_view($mac);
 
         if (defined($node_info) && (ref($node_info) eq 'HASH') && $node_info->{'status'} eq $pf::node::STATUS_REGISTERED) {
@@ -55,7 +55,7 @@ XML
                 $logger->debug("Node registered, allowed to pass Firewall");
                 return 1;
             } else {
-                $logger->error("XML send error :"$response->status_line);
+                $logger->error("XML send error :".$response->status_line);
                 return 0;
             }
         }

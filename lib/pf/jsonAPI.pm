@@ -19,6 +19,7 @@ use Log::Log4perl;
 use JSON;
 use Data::Dumper;
 
+use pf::util;
 use pf::config;
 use pf::SwitchFactory;
 use pf::inline::custom;
@@ -47,8 +48,6 @@ sub handler {
     }
 
     my $text = decode_json($content);
-    $logger->warn($content);
-    $logger->warn(Dumper $text);
 
 
     $r->pnotes->{info} = $text;
