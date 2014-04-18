@@ -23,6 +23,7 @@ use APR::URI;
 use Log::Log4perl;
 use Template;
 use URI::Escape qw(uri_escape);
+use Digest::MD5;
 
 use pf::config;
 use pf::util;
@@ -32,6 +33,8 @@ use pf::proxypassthrough::constants;
 use pf::Portal::Session;
 use pf::web::provisioning::custom;
 use pf::web::externalportal;
+use pf::stats;
+use pf::iplog qw(mac2ip);
 
 =head1 SUBROUTINES
 
@@ -53,6 +56,20 @@ sub handler {
     my $r = Apache::SSLLookup->new(shift);
     my $logger = Log::Log4perl->get_logger(__PACKAGE__);
     $logger->trace("hitting translator with URL: " . $r->uri);
+
+    # Fetch stats
+    my $c = $r->connection();
+    my $mac = ip2mac($c->remote_ip());
+    if ( (defined $mac) && $r->subprocess_env("SSLHAF_SUITES") ) {
+        my $stats = pf::stats->new();
+        my $md5 = Digest::MD5->new;
+        my $suites = $r->subprocess_env("SSLHAF_SUITES") || '';
+        my $user_agent = $r->headers_in->{'User-Agent'} || '';
+        my $ua_prof = '';
+        $md5->add($user_agent, $suites);
+        $stats->stats_http($mac,$md5->hexdigest,$user_agent,$ua_prof,$suites);
+    }
+
     # Test if the hostname is include in the proxy_passthroughs configuration
     # In this case forward to mad_proxy
     if ( ( ($r->hostname.$r->uri) =~ /$PROXYPASSTHROUGH::ALLOWED_PASSTHROUGH_DOMAINS/o && $PROXYPASSTHROUGH::ALLOWED_PASSTHROUGH_DOMAINS ne '') || ($r->hostname =~ /$PROXYPASSTHROUGH::ALLOWED_PASSTHROUGH_REMEDIATION_DOMAINS/o && $PROXYPASSTHROUGH::ALLOWED_PASSTHROUGH_REMEDIATION_DOMAINS ne '') ) {
