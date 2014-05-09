@@ -81,6 +81,8 @@ use pf::radius::custom $RADIUS_API_LEVEL;
 use pf::violation;
 use pf::soh::custom $SOH_API_LEVEL;
 use pf::util qw(valid_mac valid_ip);
+use pf::locationlog;
+use pf::ipset;
 
 sub event_add {
   my ($class, $date, $srcip, $type, $id) = @_;
@@ -159,8 +161,57 @@ sub update_iplog {
     return (pf::iplog::iplog_update($srcmac, $srcip, $lease_length));
 }
 
+sub synchronize_locationlog {
+    my ( $class, $switch, $switch_ip, $switch_mac, $ifIndex, $vlan, $mac, $voip_status, $connection_type, $user_name, $ssid ) = @_;
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return (pf::locationlog::locationlog_synchronize($switch, $switch_ip, $switch_mac, $ifIndex, $vlan, $mac, $voip_status, $connection_type, $user_name, $ssid));
+}
+
+sub insert_close_locationlog {
+    my ($class, $switch, $switch_ip, $switch_mac, $ifIndex, $vlan, $mac, $connection_type, $user_name, $ssid);
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return(pf::locationlog::locationlog_insert_closed($switch, $switch_ip, $switch_mac, $ifIndex, $vlan, $mac, $connection_type, $user_name, $ssid));
+}
+
+sub open_iplog {
+    my ( $class, $mac, $ip, $lease_length ) = @_;
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return (pf::iplog::iplog_open($mac, $ip, $lease_length));
+}
+
+sub close_iplog {
+    my ( $class, $ip ) = @_;
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return (pf::iplog::iplog_close($ip));
+}
+
+sub close_now_iplog {
+    my ( $class, $ip ) = @_;
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return (pf::iplog::iplog_close_now($ip));
+}
+
+sub trigger_violation {
+    my ( $class, $mac, $tid, $type ) = @_;
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return (pf::violation::violation_trigger($mac, $tid, $type));
+}
+
+sub ipset_node_update {
+    my ( $class, $oldip, $srcip, $srcmac ) = @_;
+    my $logger = Log::Log4perl->get_logger('pf::WebAPI');
+
+    return(pf::ipset::node_update($oldip, $srcip, $srcmac));
+}
+
 sub firewallsso {
-    my ($class, $method, $mac, $ip) = @_;
+    my ($class, $info) = @_;
     my $logger = Log::Log4perl->get_logger('pf::jsonAPI');
 
     foreach my $firewall_conf ( sort keys %ConfigFirewallSSO ) {
@@ -173,7 +224,7 @@ sub firewallsso {
             return 0;
         }
         my $firewall = $module_name->new();
-        $firewall->action($firewall_conf,$method,$mac,$ip);
+        $firewall->action($firewall_conf,$info->{'method'},$info->{'mac'},$info->{'ip'});
     }
 }
 
